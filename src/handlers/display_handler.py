@@ -94,10 +94,10 @@ class DisplayHandler:
         self.current_mode = mode
         mode_functions = {
             0: self.show_main_gps_display,
-            1: self.show_map_display,
-            2: self.enter_distance_mode,
-            3: self.enter_settings_mode,
-            4: self.display_about,
+            #1: self.show_map_display,
+            1: self.enter_distance_mode,
+            2: self.enter_settings_mode,
+            3: self.display_about,
         }
         self.led_handler.set_mode_led(1 if mode > 0 else 0)
         # Call the function associated with the mode
@@ -209,8 +209,8 @@ class DisplayHandler:
 
     # Display the about screen
     def display_about(self):
-        self.display.text("PocketNav 32 GPS", 0, 0)
-        self.display.text("v1.1 By Easton", 0, 9)
+        self.display.text("PocketBT 32 GPS", 0, 0)
+        self.display.text("v1.1.2 By Easton & Yuki", 0, 9)
         cpu_freq = freq() / 1_000_000
         self.display.text(f"CPU: {cpu_freq:.0f} MHz", 0, 20)
         free_ram = gc.mem_free() / 1024
@@ -421,7 +421,7 @@ class DisplayHandler:
     # Initial boot screen
     def display_boot_screen(self):
         self.display.fill(0)
-        self.display.text("PocketNav 32 GPS", 0, 9)
+        self.display.text("PocketBT 32 GPS", 0, 9)
         self.display.show()
 
         # Simulate a booting progress bar animation
@@ -436,9 +436,9 @@ class DisplayHandler:
 
             # Cycle through the LEDs
             if i % 20 == 0:
-                self.led_handler.set_warning_led(1)
-                utime.sleep(0.1)
-                self.led_handler.set_warning_led(0)
+                #self.led_handler.set_warning_led(1)
+                #utime.sleep(0.1)
+                #self.led_handler.set_warning_led(0)
                 self.led_handler.set_success_led(1)
                 utime.sleep(0.1)
                 self.led_handler.set_success_led(0)

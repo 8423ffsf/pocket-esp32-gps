@@ -7,13 +7,13 @@ class LEDHandler:
         settings_handler,
     ):
         self.mode_led = Pin(18, Pin.OUT)
-        self.warning_led = Pin(23, Pin.OUT)
+        #self.warning_led = Pin(23, Pin.OUT)
         self.success_led = Pin(19, Pin.OUT)
         self.error_led = Pin(5, Pin.OUT)
         # self.built_in_led = Pin(2, Pin.OUT)
         # Initialize all LEDs to off
         self.mode_led.value(0)
-        self.warning_led.value(0)
+        #self.warning_led.value(0)
         self.success_led.value(0)
         self.error_led.value(0)
         self.settings_handler = settings_handler
@@ -30,9 +30,9 @@ class LEDHandler:
         if self.are_leds_enabled():
             self.mode_led.value(not self.mode_led.value())
 
-    def set_warning_led(self, value):
-        if self.are_leds_enabled():
-            self.warning_led.value(value)
+    #def set_warning_led(self, value):
+    #    if self.are_leds_enabled():
+    #        self.warning_led.value(value)
 
     def set_success_led(self, value):
         if self.are_leds_enabled():
