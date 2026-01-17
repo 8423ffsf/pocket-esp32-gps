@@ -50,7 +50,7 @@ def enter_power_save_mode(settings_handler, display):
         freq(40000000)
         # ADC power down
         adc = ADC(0)
-        adc.atten(ADC.ATTN_0DB)
+        adc.atten(ADC.ATTN_11DB)
         adc.width(ADC.WIDTH_9BIT)
         display.poweroff()
         display.contrast(1)
