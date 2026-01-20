@@ -7,7 +7,8 @@ import esp
 import utime
 from utils.haversine import haversine
 
-from handlers.vector_map_handler import VectorMap
+# 注释：地图模式相关导入
+# from handlers.vector_map_handler import VectorMap
 
 from handlers.power_management import PowerManager
 
@@ -49,16 +50,18 @@ class DisplayHandler:
         self.is_editing = False
         self.point_A = None
         self.point_B = None
-        self.vector_map_file = "/simplified_out_0229.geojson"
-        self.zoom_level = 2.0
-        self.prev_zoom_level = self.zoom_level
+        # 注释：地图模式相关变量
+        # self.vector_map_file = "/simplified_out_0229.geojson"
+        # self.zoom_level = 2.0
+        # self.prev_zoom_level = self.zoom_level
         self.prev_lat = None
         self.prev_lon = None
         self.prev_alt = None
         self.prev_hdop = None
-        self.location_update_threshold = 25
-        self.vector_map = VectorMap(self.display, self.vector_map_file, bbox=None)
-        self.vector_map.set_zoom(self.zoom_level)
+        # 注释：地图模式相关变量
+        # self.location_update_threshold = 25
+        # self.vector_map = VectorMap(self.display, self.vector_map_file, bbox=None)
+        # self.vector_map.set_zoom(self.zoom_level)
         self.apply_display_settings_and_mode()
 
     def set_display_power_button(self, button):
@@ -94,6 +97,7 @@ class DisplayHandler:
         self.current_mode = mode
         mode_functions = {
             0: self.show_main_gps_display,
+            # 注释：地图模式相关映射
             #1: self.show_map_display,
             1: self.enter_distance_mode,
             2: self.enter_settings_mode,
@@ -271,23 +275,24 @@ class DisplayHandler:
 
         gc.collect()
 
+    # 注释：地图模式相关方法 - 地图缩放
     # Handle nav button press to change zoom level when on map display
-    def update_map_zoom(self):
-        # Toggle between 3.0, 2.0 and 1.0 and 0.5 zoom levels
-        if self.zoom_level == 3.0:
-            self.zoom_level = 2.0
-        elif self.zoom_level == 2.0:
-            self.zoom_level = 1.0
-        elif self.zoom_level == 1.0:
-            self.zoom_level = 0.5
-        else:
-            self.zoom_level = 3.0
-        if self.DEBUG:
-            print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
-
-        self.show_map_display()
-        self.prev_zoom_level = None
-        gc.collect()
+    # def update_map_zoom(self):
+    #     # Toggle between 3.0, 2.0 and 1.0 and 0.5 zoom levels
+    #     if self.zoom_level == 3.0:
+    #         self.zoom_level = 2.0
+    #     elif self.zoom_level == 2.0:
+    #         self.zoom_level = 1.0
+    #     elif self.zoom_level == 1.0:
+    #         self.zoom_level = 0.5
+    #     else:
+    #         self.zoom_level = 3.0
+    #     if self.DEBUG:
+    #         print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
+    #
+    #     self.show_map_display()
+    #     self.prev_zoom_level = None
+    #     gc.collect()
 
     def update_settings_display(self):
         self.display.fill(0)
@@ -363,58 +368,59 @@ class DisplayHandler:
         self.is_editing = not self.is_editing
         gc.collect()
 
+    # 注释：地图模式核心方法 - 地图显示
     # Display the vector map
-    def show_map_display(self):
-        lat = self.gps.gps_data.get("lat")
-        lon = self.gps.gps_data.get("lon")
-        fix = self.gps.gps_data.get("fix")
-
-        if fix == "No Fix" or lat is None or lon is None:
-            self.display_text("No GPS data", "available")
-            self.display.show()
-            lightsleep(2000)
-            # Transition to next screen so user can access other screens
-            self.current_mode = (self.current_mode + 1) % len(self.MODES)
-            return
-
-        # Free up memory before rendering
-        gc.collect()
-
-        # Determine if we need to update the map
-        # Minimum distance threshold for location update
-        # is set in self.location_update_threshold in meters
-        location_changed = False
-        if self.prev_lat is None or self.prev_lon is None:
-            location_changed = True
-        else:
-            distance = haversine(self.prev_lat, self.prev_lon, lat, lon)
-            if distance > self.location_update_threshold:
-                location_changed = True
-
-        zoom_level_changed = self.zoom_level != self.prev_zoom_level
-
-        if location_changed or zoom_level_changed:
-            # Recalculate bbox based on current location and zoom level
-            default_bbox = VectorMap.calculate_bbox_for_zoom(lat, lon, self.zoom_level)
-            if self.DEBUG:
-                print(f"[DEBUG] Default BBox: {default_bbox}")
-            # Update the bbox in the existing VectorMap
-            self.vector_map.update_bbox(default_bbox)
-            # Update previous location and zoom level
-            self.prev_lat = lat
-            self.prev_lon = lon
-            self.prev_zoom_level = self.zoom_level
-            gc.collect()
-
-        self.display.fill(0)
-        # Render the map features
-        self.vector_map.render()
-        # Render the user's location
-        self.vector_map.render_user_location(lat, lon)
-
-        # Update the display __once__
-        self.display.show()
-        gc.collect()
+    # def show_map_display(self):
+    #     lat = self.gps.gps_data.get("lat")
+    #     lon = self.gps.gps_data.get("lon")
+    #     fix = self.gps.gps_data.get("fix")
+    #
+    #     if fix == "No Fix" or lat is None or lon is None:
+    #         self.display_text("No GPS data", "available")
+    #         self.display.show()
+    #         lightsleep(2000)
+    #         # Transition to next screen so user can access other screens
+    #         self.current_mode = (self.current_mode + 1) % len(self.MODES)
+    #         return
+    #
+    #     # Free up memory before rendering
+    #     gc.collect()
+    #
+    #     # Determine if we need to update the map
+    #     # Minimum distance threshold for location update
+    #     # is set in self.location_update_threshold in meters
+    #     location_changed = False
+    #     if self.prev_lat is None or self.prev_lon is None:
+    #         location_changed = True
+    #     else:
+    #         distance = haversine(self.prev_lat, self.prev_lon, lat, lon)
+    #         if distance > self.location_update_threshold:
+    #             location_changed = True
+    #
+    #     zoom_level_changed = self.zoom_level != self.prev_zoom_level
+    #
+    #     if location_changed or zoom_level_changed:
+    #         # Recalculate bbox based on current location and zoom level
+    #         default_bbox = VectorMap.calculate_bbox_for_zoom(lat, lon, self.zoom_level)
+    #         if self.DEBUG:
+    #             print(f"[DEBUG] Default BBox: {default_bbox}")
+    #         # Update the bbox in the existing VectorMap
+    #         self.vector_map.update_bbox(default_bbox)
+    #         # Update previous location and zoom level
+    #         self.prev_lat = lat
+    #         self.prev_lon = lon
+    #         self.prev_zoom_level = self.zoom_level
+    #         gc.collect()
+    #
+    #     self.display.fill(0)
+    #     # Render the map features
+    #     self.vector_map.render()
+    #     # Render the user's location
+    #     self.vector_map.render_user_location(lat, lon)
+    #
+    #     # Update the display __once__
+    #     self.display.show()
+    #     gc.collect()
 
         # Utility methods
 
@@ -493,8 +499,9 @@ class DisplayHandler:
     def handle_nav_button(self):
         if self.current_mode == 0:
             self.gps_second_display()
-        elif self.current_mode == 1:
-            self.update_map_zoom()
+        # 注释：地图模式相关的导航按钮逻辑
+        # elif self.current_mode == 1:
+        #     self.update_map_zoom()
         elif self.current_mode == 3:
             self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
             self.update_settings_display()
