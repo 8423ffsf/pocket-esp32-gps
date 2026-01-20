@@ -100,7 +100,7 @@ class BLEGPS:
             pass
 
     def run(self):
-        """主运行循环：定时更新+BLE保活，配对后零配置稳定运行"""
+        #主运行循环：定时更新+BLE保活，配对后零配置稳定运行
         last_update = time.ticks_ms()
         while True:
             current_time = time.ticks_ms()
