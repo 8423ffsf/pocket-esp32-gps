@@ -7,12 +7,13 @@ import esp32
 
 
 class PowerManager:
-    def __init__(self, display, gps, settings_handler, led_handler, display_handler):
+    def __init__(self, display, gps, settings_handler, led_handler, display_handler, ble=None):
         self.display = display
         self.gps = gps
         self.settings_handler = settings_handler
         self.display_handler = display_handler
         self.led_handler = led_handler  # Not used
+        self.ble = ble  # 新增：注入BLE实例，默认为None（兼容原代码调用）
 
         self.state = "active"
         self.idle_timeout_ms = self.settings_handler.get_setting(
@@ -92,6 +93,11 @@ class PowerManager:
         self.state = "deep_sleep"
         self.display.poweroff()
         self.gps.power_off()
+        # 新增：深睡时关闭BLE，先判断实例是否存在，避免报错
+        if self.ble and hasattr(self.ble, '_ble'):
+            self.ble._ble.active(False)  # 关闭BLE射频，彻底停止BLE工作
+            print("[DEBUG] BLE deactivated for deep sleep")
+        # 原深睡唤醒配置不变
         esp32.wake_on_ext0(pin=self.display_power_button, level=0)
         deepsleep()
 
@@ -100,6 +106,11 @@ class PowerManager:
         self.state = "active"
         self.display.poweron()
         self.gps.power_on()
+        # 新增：深睡唤醒后重新初始化BLE，恢复原工作状态
+        if self.ble and hasattr(self.ble, '_ble'):
+            self.ble._ble.active(True)  # 重新激活BLE射频
+            self.ble._ble.gap_advertise(30000, adv_data=self.ble._adv_payload)  # 恢复广播
+            print("[DEBUG] BLE reactivated and advertising resumed")
         self.reset_inactivity_timer()
         gc.collect()
 
