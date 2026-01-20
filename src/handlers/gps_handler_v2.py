@@ -146,7 +146,7 @@ class GPSHandler:
                 gps_data["fix"] = "Valid" if fix else "No Fix"
 
                 self.led_set_success(1 if fix else 0)
-                self.led_set_warning(0)
+                #self.led_set_warning(0)
                 self.led_set_error(0 if fix else 1)
 
                 if fix and len(data) >= 7:
