@@ -19,6 +19,7 @@ _PIN_CODE = "1234"    # 配对PIN码（4/6位，用户首次仅需输入一次�
 
 class BLEGPS:
     def __init__(self):
+        self._UPDATE_INTERVAL = 1
         self._ble = bluetooth.BLE()
         self._ble.active(True)
         self._ble.irq(self._irq_handler)
