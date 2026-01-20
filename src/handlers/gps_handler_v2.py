@@ -25,6 +25,7 @@ class GPSHandler:
             "raw_nmea": {
                 "GPRMC": None,  # 推荐最小定位信息
                 "GPGGA": None,  # GPS定位数据
+                "OTHER": []  # 兜底
             }
         }
         self.last_pps_time = None
