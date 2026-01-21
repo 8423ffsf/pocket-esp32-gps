@@ -1,9 +1,9 @@
 # boot.py
-
+# 适配ADCHandler：集成全局电量采集，ESP32全系列通用，保留原有蓝牙GPS核心逻辑
 from machine import (
     Pin,
     freq,
-    ADC,
+    ADC,  # 保留原ADC导入（若需删除可直接移除，已用独立ADCHandler）
     lightsleep,
     RTC,
     Timer,
@@ -16,6 +16,8 @@ from handlers.button_handler import ButtonHandler
 from handlers.display_handler import DisplayHandler
 from handlers.led_handler import LEDHandler
 from handlers.bt_nmea_handler import BtNMEAHandler
+# 导入独立ADC处理器（核心新增）
+from adc_handler import ADCHandler
 
 
 def initialize_handlers():
@@ -35,7 +37,15 @@ def initialize_handlers():
     # 按键处理器传入蓝牙，支持按键控制（如需）
     button_handler = ButtonHandler(gps, display_handler, bt_nmea_handler)
 
-    return settings_handler, led_handler, gps, display_handler, button_handler, bt_nmea_handler
+    # 🌟核心新增：初始化ADC电量采集（适配ESP32 C3 Super Mini，GPIO0=ADC0）
+    # 若GPIO0被占用，直接修改adc_pin为2（ADC1=GPIO2）或4（ADC2=GPIO4）即可
+    adc_handler = ADCHandler(adc_pin=0)
+    # 可选：硬件校准系数（实测电压与采集值不符时微调，例：1.02/0.98）
+    adc_handler.set_calib_coeff(1.01)
+    print("[ADC INIT] 电量采集初始化完成，ESP32全系列1.1V内部参考")
+
+    # 返回值新增adc_handler，供全局调用
+    return settings_handler, led_handler, gps, display_handler, button_handler, bt_nmea_handler, adc_handler
 
 
 def manage_boot_cycle():
@@ -51,11 +61,8 @@ def manage_boot_cycle():
 def enter_power_save_mode(settings_handler, display, bt_nmea_handler):
     """开机省电模式：仅开机阶段临时关闭蓝牙5秒（非浅睡），5秒后自动恢复"""
     if settings_handler.get_setting("pwr_save_boot", "DEVICE_SETTINGS"):
-        # CPU降频+ADC省电+屏幕关闭，开机功耗优化
+        # CPU降频+屏幕关闭，开机功耗优化（移除原无效ADC代码，已用独立ADCHandler）
         freq(40000000)
-        adc = ADC(0)
-        adc.atten(ADC.ATTN_11DB)
-        adc.width(ADC.WIDTH_9BIT)
         display.poweroff()
         display.contrast(1)
 
@@ -97,22 +104,23 @@ def setup_screen_timeout(settings_handler, power_manager):
 
 
 def main():
-    # 初始化所有处理器（蓝牙已开机激活）
+    # 初始化所有处理器（新增adc_handler，蓝牙已开机激活）
     (
         settings_handler,
         led_handler,
         gps,
         display_handler,
         button_handler,
-        bt_nmea_handler
+        bt_nmea_handler,
+        adc_handler  # 接收ADC处理器实例
     ) = initialize_handlers()
 
     # 绑定【移除深睡+浅睡降BLE频率】的PowerManager实例
     power_manager = display_handler.power_manager
     manage_boot_cycle()
 
-    # 执行开机省电（仅开机5秒临时关蓝牙，与浅睡无关）
-    enter_power_save_mode(settings_handler, display_handler, bt_nmea_handler)
+    # 执行开机省电（移除原无效ADC代码，不影响逻辑）
+    enter_power_save_mode(settings_handler, display_handler.display, bt_nmea_handler)
 
     # 显示开机画面
     handle_boot_screen(display_handler)
@@ -120,6 +128,11 @@ def main():
     setup_screen_timeout(settings_handler, power_manager)  # 绑定屏超时触发浅睡
 
     previous_mode = -1
+    # 新增：电量采集频率控制（避免频繁采样，降低功耗，每2秒采集1次）
+    sample_count = 0
+    sample_interval = 20  # 对应主循环lightsleep(110ms)，20*110≈2.2秒
+    print("[MAIN LOOP] 主循环启动，电量每2秒采集一次")
+
     while True:
         try:
             # 屏显模式切换刷新，保留原逻辑
@@ -131,6 +144,14 @@ def main():
             # 仅定位模式读取GPS数据，蓝牙随GPS更新推送（频率由PowerManager控制）
             if display_handler.current_mode in [0, 1, 2]:
                 gps.read_gps()
+
+            # 🌟新增：按固定频率采集电量，降低ADC功耗
+            sample_count += 1
+            if sample_count >= sample_interval:
+                batt_volt = adc_handler.get_voltage()  # 获取电池电压
+                batt_percent = adc_handler.get_battery_percent()  # 获取电量百分比
+                print(f"[BATTERY] 电压：{batt_volt}V | 剩余电量：{batt_percent}%")
+                sample_count = 0  # 重置计数
 
             # 全局轻量休眠，降低CPU占用，与PowerManager无冲突
             lightsleep(110)
@@ -147,6 +168,10 @@ def main():
                     period=5000,
                     callback=lambda t: bt_nmea_handler.activate()
                 )
+            # 新增：ADC异常捕获，避免电量采集导致主循环崩溃
+            elif "adc" in str(e).lower():
+                print("[ADC ERROR] 电量采集异常，跳过本次采样")
+                sample_count = 0
 
 
 # 程序规范入口
