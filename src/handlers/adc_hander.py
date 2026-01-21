@@ -80,16 +80,4 @@ class ADCHandler:
         """释放ADC资源，低功耗场景使用"""
         self.adc.deinit()
 
-# 测试代码（示例：R1=22k，R2=10k → adc_multiplier=(22+10)/10=3.2）
-if __name__ == "__main__":
-    import utime
-    # 初始化：指定引脚+分压系数(ADC_MULTIPLIER)
-    adc_handler = ADCHandler(adc_pin=0, adc_multiplier=3.2)
-    # 可选：设置校准系数（按实测值计算后填入，例：1.01）
-    adc_handler.set_calib_coeff(1.01)
-    while True:
-        adc_v = adc_handler.get_adc_voltage()  # ADC引脚原始电压（调试）
-        real_v = adc_handler.get_voltage()      # 电池真实电压（实际使用）
-        pct = adc_handler.get_battery_percent() # 剩余电量
-        print(f"ADC采集：{adc_v}V | 电池电压：{real_v}V | 剩余电量：{pct}%")
-        utime.sleep(1)
+
