@@ -39,9 +39,10 @@ def initialize_handlers():
 
     # 🌟核心新增：初始化ADC电量采集（适配ESP32 C3 Super Mini，GPIO0=ADC0）
     # 若GPIO0被占用，直接修改adc_pin为2（ADC1=GPIO2）或4（ADC2=GPIO4）即可
-    adc_handler = ADCHandler(adc_pin=0)
+    # 核心修改：初始化时填入计算好的adc_multiplier（必改）
+    adc_handler = ADCHandler(adc_pin=0,adc_multiplier=3.2)
     # 可选：硬件校准系数（实测电压与采集值不符时微调，例：1.02/0.98）
-    adc_handler.set_calib_coeff(1.01)
+    #adc_handler.set_calib_coeff(1.01)
     print("[ADC INIT] 电量采集初始化完成，ESP32全系列1.1V内部参考")
 
     # 返回值新增adc_handler，供全局调用
