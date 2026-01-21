@@ -32,8 +32,8 @@ class GPSHandler:
 
         # Initialize PPS and GPS power pin
         self.pps_pin = Pin(4, Pin.IN)
-        self.gps_power_pin = Pin(26, Pin.OUT)
-        self.gps_power_pin.value(1)
+        #self.gps_power_pin = Pin(26, Pin.OUT)
+        #self.gps_power_pin.value(1)
         # UART object
         self.uart1 = None
 
@@ -69,14 +69,14 @@ class GPSHandler:
         if self.DEBUG:
             print("[DEBUG] GPS initialized")
 
-    def power_off(self):
-        if self.DEBUG:
-            print("[DEBUG] Powering off GPS")
-        self.gps_power_pin.value(0)
+    #def power_off(self):
+    #    if self.DEBUG:
+    #        print("[DEBUG] Powering off GPS")
+    #    self.gps_power_pin.value(0)
 
-    def power_on(self):
-        print("[DEBUG] Powering on GPS")
-        self.gps_power_pin.value(1)
+    #def power_on(self):
+    #    print("[DEBUG] Powering on GPS")
+    #    self.gps_power_pin.value(1)
 
     # PPS signal handler to measure intervals between pulses
     def pps_handler(self, pin):
