@@ -17,7 +17,7 @@ from handlers.display_handler import DisplayHandler
 from handlers.led_handler import LEDHandler
 from handlers.bt_nmea_handler import BtNMEAHandler
 # 导入独立ADC处理器（核心新增）
-from adc_handler import ADCHandler
+from handlers.adc_handler import ADCHandler
 
 
 def initialize_handlers():
