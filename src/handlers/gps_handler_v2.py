@@ -19,13 +19,17 @@ class GPSHandler:
             "hdop": 0,
             "utc_time": None,
             "utc_date": None,
+            "speed_knots": 0.0,
+            "course": None,
             "satellites": [],
             "satellites_in_view": 0,
-            # 新增原始NMEA数据存储
+            # 兼容GNSS(ATGM336H)+纯GPS模块 双前缀存储
             "raw_nmea": {
-                "GPRMC": None,  # 推荐最小定位信息
-                "GPGGA": None,  # GPS定位数据
-                "OTHER": []  # 兜底
+                "GPRMC": None,  # 仅GPS
+                "GNRMC": None,  # 通用GNSS
+                "GPGGA": None,  # 仅GPS
+                "GNGGA": None,  # 通用GNSS
+                "OTHER": []     # 其他语句兜底
             }
         }
         self.last_pps_time = None
@@ -74,9 +78,9 @@ class GPSHandler:
     #        print("[DEBUG] Powering off GPS")
     #    self.gps_power_pin.value(0)
 
-    #def power_on(self):
-    #    print("[DEBUG] Powering on GPS")
-    #    self.gps_power_pin.value(1)
+    def power_on(self):
+        print("[DEBUG] Powering on GPS")
+        #self.gps_power_pin.value(1)
 
     # PPS signal handler to measure intervals between pulses
     def pps_handler(self, pin):
@@ -94,20 +98,21 @@ class GPSHandler:
     @staticmethod
     @micropython.native
     def convert_to_decimal(degrees_minutes):
-        if degrees_minutes and degrees_minutes.strip():
-            try:
-                parts = degrees_minutes.split(".")
-                if len(parts) != 2:
-                    return None
-                degrees = float(parts[0][:-2])
-                minutes = float(parts[0][-2:] + "." + parts[1])
-                return degrees + (minutes / 60)
-            except ValueError as e:
-                print(f"[ERROR] Error converting {degrees_minutes} to decimal: {e}")
-        return None
+        if not (degrees_minutes and degrees_minutes.strip()):
+            return None
+        try:
+            parts = degrees_minutes.split(".")
+            if len(parts) != 2 or len(parts[0]) < 3:
+                return None
+            degrees = float(parts[0][:-2])
+            minutes = float(f"{parts[0][-2:]}.{parts[1]}")
+            return degrees + (minutes / 60)
+        except (ValueError, IndexError):
+            print(f"[ERROR] Invalid degree format: {degrees_minutes}")
+            return None
 
-    # Read GPS data
-    # The @micropython.native decorator gives a 5% performance boost
+    # Read GPS data (全兼容GN/GP双前缀，容错拉满)
+    @micropython.native
     def read_gps(self):
         if not self.uart_readline:
             if self.DEBUG:
@@ -124,98 +129,90 @@ class GPSHandler:
                 if self.DEBUG:
                     print(f"[DEBUG] Invalid NMEA sentence: {line_decoded}")
                 return
-            
-            # 存储原始NMEA数据
-            nmea_type = line_decoded[1:6]  # 提取NMEA语句类型（如GPRMC）
-            if nmea_type in self.gps_data["raw_nmea"]:
-                # 存储主要类型的原始语句
+
+            # 双前缀精准存储，核心语句分存，其余兜底
+            nmea_type = line_decoded[1:6]
+            if nmea_type in self.gps_data["raw_nmea"].keys():
                 self.gps_data["raw_nmea"][nmea_type] = line_decoded
             else:
-                # 存储其他类型的语句到列表
                 self.gps_data["raw_nmea"]["OTHER"].append(line_decoded)
-                # 限制OTHERS列表大小，避免内存溢出
                 if len(self.gps_data["raw_nmea"]["OTHER"]) > 10:
                     self.gps_data["raw_nmea"]["OTHER"].pop(0)
 
             data = line_decoded.split(",")
-            # Cache locally for performance
             gps_data = self.gps_data
 
-            if line_decoded.startswith("$GPRMC") and len(data) >= 7:
+            # 1. 兼容 GNRMC / GPRMC 定位+时间+速度解析
+            if line_decoded.startswith(("$GPRMC", "$GNRMC")):
+                if len(data) < 7:
+                    return self.gps_data
+                # 定位有效性判断
                 fix = data[2] == "A"
                 gps_data["fix"] = "Valid" if fix else "No Fix"
-
                 self.led_set_success(1 if fix else 0)
-                #self.led_set_warning(0)
                 self.led_set_error(0 if fix else 1)
 
-                if fix and len(data) >= 7:
-                    # Extract UTC time and date
-                    gps_data[
-                        "utc_time"
-                    ] = f"{data[1][:2]}:{data[1][2:4]}:{data[1][4:6]}"
-                    gps_data[
-                        "utc_date"
-                    ] = f"20{data[9][4:6]}-{data[9][2:4]}-{data[9][:2]}"
+                if fix:
+                    # UTC时间解析（容错）
+                    if len(data[1]) >= 6:
+                        gps_data["utc_time"] = f"{data[1][:2]}:{data[1][2:4]}:{data[1][4:6]}"
+                    # UTC日期解析（容错）
+                    if len(data) >=10 and len(data[9])>=6:
+                        gps_data["utc_date"] = f"20{data[9][4:6]}-{data[9][2:4]}-{data[9][:2]}"
+                    # 经纬度解析（容错+换算）
+                    lat = self.convert_to_decimal(data[3])
+                    lon = self.convert_to_decimal(data[5])
+                    if lat:
+                        gps_data["lat"] = lat * (-1 if data[4] == "S" else 1)
+                    if lon:
+                        gps_data["lon"] = lon * (-1 if data[6] == "W" else 1)
+                    # 速度+航向解析（容错）
+                    gps_data["speed_knots"] = float(data[7]) if (data[7] and data[7].strip()) else 0.0
+                    gps_data["course"] = float(data[8]) if (data[8] and data[8].strip()) else None
 
-                    # Extract latitude and longitude
-                    latitude = self.convert_to_decimal(data[3])
-                    longitude = self.convert_to_decimal(data[5])
-                    if latitude is not None and longitude is not None:
-                        gps_data["lat"] = latitude * (-1 if data[4] == "S" else 1)
-                        gps_data["lon"] = longitude * (-1 if data[6] == "W" else 1)
+            # 2. 兼容 GNGGA / GPGGA 高度+卫星数+精度解析
+            elif line_decoded.startswith(("$GPGGA", "$GNGGA")):
+                if len(data) < 10:
+                    return self.gps_data
+                gps_data["alt"] = float(data[9]) if (data[9] and data[9].strip()) else 0.0
+                gps_data["sats"] = int(data[7]) if (data[7] and data[7].strip()) else 0
+                gps_data["hdop"] = float(data[8]) if (data[8] and data[8].strip()) else None
 
-                    # Extract speed and course if available
-                    gps_data["speed_knots"] = float(data[7]) if data[7] else 0
-                    gps_data["course"] = float(data[8]) if data[8] else None
-
-            elif line_decoded.startswith("$GPGGA") and len(data) >= 10:
-                gps_data["alt"] = float(data[9]) if data[9] else 0
-                gps_data["sats"] = int(data[7]) if data[7] else 0
-                #  Horizontal dilution of precision (accuracy indicator)
-                gps_data["hdop"] = float(data[8]) if data[8] else None
-
-            elif line_decoded.startswith("$GPGSV") and len(data) >= 4:
-                # Extract satellite information
-                gps_data["satellites_in_view"] = int(data[3]) if data[3] else 0
-                if "satellites" not in gps_data:
-                    gps_data["satellites"] = []
-                for i in range(4, len(data) - 4, 4):
+            # 3. 兼容 GNSV / GPGSV 卫星详情解析（双前缀通用）
+            elif line_decoded.startswith(("$GPGSV", "$GNGSV")):
+                if len(data) < 4:
+                    return self.gps_data
+                gps_data["satellites_in_view"] = int(data[3]) if (data[3] and data[3].strip()) else 0
+                gps_data["satellites"].clear() # 清空旧数据，避免冗余
+                # 批量解析卫星参数（容错）
+                for i in range(4, len(data)-3, 4):
                     try:
-                        sat_id = int(data[i])
-                        elevation = int(data[i + 1]) if data[i + 1] else None
-                        azimuth = int(data[i + 2]) if data[i + 2] else None
-                        snr = int(data[i + 3]) if data[i + 3] else None
-                        gps_data["satellites"].append(
-                            {
-                                "id": sat_id,
-                                "elevation": elevation,
-                                "azimuth": azimuth,
-                                "snr": snr,
-                            }
-                        )
+                        sat_id = data[i].strip()
+                        elev = data[i+1].strip()
+                        azim = data[i+2].strip()
+                        snr_val = data[i+3].strip()
+                        if not sat_id:
+                            continue
+                        gps_data["satellites"].append({
+                            "id": int(sat_id),
+                            "elevation": int(elev) if elev else None,
+                            "azimuth": int(azim) if azim else None,
+                            "snr": int(snr_val) if snr_val else None
+                        })
                     except (ValueError, IndexError):
                         continue
+                        
         except Exception as e:
-            print(f"[ERROR] Error processing GPS data: {str(e)}")
+            print(f"[ERROR] GPS data process failed: {str(e)}")
             if self.DEBUG:
-                print(f"[DEBUG] Raw line: {line}")
+                print(f"[DEBUG] Raw NMEA: {line}")
 
-        # Fix status handling
-        #if self.gps_data["fix"] == "No Fix":
-        #    if any(self.gps_data.get(key) for key in ["lat", "lon", "alt", "sats"]):
-        #        self.gps_data["fix"] = "Partial"
-        #        self.led_set_warning(1)
-
-        # Short sleep to prevent CPU hogging
-        # Do not remove this sleep
-        # Split long intervals into smaller chunks
-        active_sleep = max(self.update_interval - 100, 0)  # Active processing time
-        low_power_sleep = min(self.update_interval, 100)  # Light sleep duration
-
-        time.sleep_ms(active_sleep)  # Active sleep to maintain timers
+        # 低功耗延时，防CPU占用过高
+        active_sleep = max(self.update_interval - 100, 0)
+        low_power_sleep = min(self.update_interval, 100)
+        time.sleep_ms(active_sleep)
         if low_power_sleep > 0:
-            lightsleep(low_power_sleep)  # Lightsleep for remaining interval
+            lightsleep(low_power_sleep)
         if self.DEBUG:
-            print(f"[DEBUG] Update interval: {self.update_interval} ms")
+            print(f"[DEBUG] GPS update done, interval: {self.update_interval}ms")
         return self.gps_data
