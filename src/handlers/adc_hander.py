@@ -5,7 +5,7 @@ from machine import ADC, Pin
 import math
 
 class ADCHandler:
-    def __init__(self, adc_pin=0, atten=ADC.ATTN_0DB, width=ADC.WIDTH_12BIT, adc_multiplier=1.0):
+    def __init__(self, adc_pin=5, atten=ADC.ATTN_11DB, width=ADC.WIDTH_12BIT, adc_multiplier=1.0):
         """
         ESP32全系列通用ADC初始化，适配ADC_MULTIPLIER分压公式
         :param adc_pin: ADC引脚（C3=0/2/4；原版ESP32=0~18）
@@ -23,9 +23,9 @@ class ADCHandler:
         
         # 核心参数
         self.calib_coeff = 1.0  # 硬件校准系数（修正ADC采样微小偏差，默认1.0）
-        self.REF_VOLTAGE = 1.1  # ESP32全系列通用1.1V内部参考电压
+        self.REF_VOLTAGE = 3.3  # ESP32全系列通用1.1V内部参考电压
         self.MAX_RAW_VALUE = 4095  # 12位采样最大原始值
-        self.adc_multiplier = adc_multiplier  # 你指定的分压系数(R1+R2)/R2
+        self.adc_multiplier = 1.6  # 你指定的分压系数(R1+R2)/R2
 
     def set_calib_coeff(self, coeff):
         """设置硬件校准系数，修正ADC采样偏差（建议0.9~1.1之间）"""
