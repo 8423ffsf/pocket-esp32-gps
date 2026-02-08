@@ -35,7 +35,7 @@ class GPSHandler:
         self.last_pps_time = None
 
         # Initialize PPS and GPS power pin
-        self.pps_pin = Pin(4, Pin.IN)
+        self.pps_pin = Pin(6, Pin.IN)
         #self.gps_power_pin = Pin(26, Pin.OUT)
         #self.gps_power_pin.value(1)
         # UART object
@@ -58,7 +58,7 @@ class GPSHandler:
         self.power_on()
         try:
             self.uart1 = UART(
-                1, baudrate=9600, bits=8, parity=None, stop=1, tx=Pin(17), rx=Pin(16)
+                1, baudrate=9600, bits=8, parity=None, stop=1, tx=Pin(6), rx=Pin(7)
             )
             if not self.uart1:
                 raise ValueError("[ERROR] Failed to initialize UART")
