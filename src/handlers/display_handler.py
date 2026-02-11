@@ -80,7 +80,7 @@ class DisplayHandler:
 
     @staticmethod
     def initialize_display():
-        i2c = I2C(scl=Pin(22), sda=Pin(21))
+        i2c = I2C(scl=Pin(9), sda=Pin(10))
         display = ssd1306.SSD1306_I2C(128, 64, i2c)
         display_power_button = Pin(13, Pin.IN, Pin.PULL_UP)
         return i2c, display, display_power_button
