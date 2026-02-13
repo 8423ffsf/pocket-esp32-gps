@@ -9,10 +9,10 @@ class ButtonHandler:
 
         # Initialize buttons
         self.buttons = {
-            "set_button": Pin(27, Pin.IN, Pin.PULL_UP),
-            "reset_mode_button": Pin(12, Pin.IN, Pin.PULL_UP),
-            "display_power_button": Pin(13, Pin.IN, Pin.PULL_UP),
-            "nav_button": Pin(14, Pin.IN, Pin.PULL_UP),
+            "set_button": Pin(2, Pin.IN, Pin.PULL_UP),
+            "reset_mode_button": Pin(3, Pin.IN, Pin.PULL_UP),
+            "display_power_button": Pin(1, Pin.IN, Pin.PULL_UP),
+            "nav_button": Pin(4, Pin.IN, Pin.PULL_UP),
         }
 
         # Attach a single interrupt handler
